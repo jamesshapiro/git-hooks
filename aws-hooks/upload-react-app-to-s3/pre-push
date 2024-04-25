@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Command to run npm build
+
+echo "Running 'npm run build' before push..."
+
+# note: see package.json for the build script that uploads app to S3
+npm run build
+
+# Check the npm build exit code
+if [ $? -eq 0 ]; then
+    echo "'npm run build' succeeded."
+else
+    echo "'npm run build' failed, aborting push."
+    exit 1
+fi

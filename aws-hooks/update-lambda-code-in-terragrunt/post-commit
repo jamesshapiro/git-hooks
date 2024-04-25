@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Directory to watch
+WATCH_DIR="jamesshapiro/us-east-1/default/riordan-api/lambda_function/"
+
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+
+DIRECTORIES=("jamesshapiro/us-east-1/default/riordan-api" "jamesshapiro/us-east-1/default/riordan-api-auth" "athens/us-east-1/default/riordan-api")
+
+# Get list of files changed in the last commit
+CHANGED_FILES=$(git diff --name-only HEAD~1)
+
+# Check if any file in the watch directory was changed
+if echo "$CHANGED_FILES" | grep -q "$WATCH_DIR"; then
+  cd "$PROJECT_ROOT/$WATCH_DIR"
+  rm -f archive.zip
+  zip -r archive.zip .
+  aws s3 cp archive.zip s3://athens-build-lambda-code/riordan-calc/archive.zip
+  OBJECT_VERSION=$(aws s3api list-object-versions --bucket athens-build-lambda-code --prefix "riordan-calc/archive.zip" \
+                     | jq -r '.Versions[0].VersionId')
+
+  cd "$PROJECT_ROOT"
+  for dir in "${DIRECTORIES[@]}"; do
+    sed -i "s/^ *lambda_code_object_version = \".*\"/    lambda_code_object_version = \"$OBJECT_VERSION\"/" "$dir/terragrunt.hcl"
+  done
+fi
